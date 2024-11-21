@@ -1,13 +1,10 @@
 import enum
 import time
 
+from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder
-from pymodbus.payload import BinaryPayloadDecoder
-from pymodbus.client import ModbusTcpClient
-from pymodbus.client import ModbusSerialClient
-from pymodbus.register_read_message import ReadHoldingRegistersResponse
-
+from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
+from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
 
 RETRIES = 3
 TIMEOUT = 1

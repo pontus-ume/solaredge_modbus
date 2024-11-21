@@ -209,7 +209,6 @@ class SolarEdge:
             if device:
                 self.mode = connectionType.RTU
                 self.client = ModbusSerialClient(
-                    method="rtu",
                     port=self.device,
                     stopbits=self.stopbits,
                     parity=self.parity,

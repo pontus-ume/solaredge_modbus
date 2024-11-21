@@ -151,7 +151,7 @@ METER_REGISTER_OFFSETS = [
 BATTERY_REGISTER_OFFSETS = [
     0x0,
     0x100,
-    0x300
+    0x200
 ]
 
 

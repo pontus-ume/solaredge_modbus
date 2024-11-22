@@ -514,14 +514,26 @@ class Inverter(SolarEdge):
         ]
 
     def meters(self):
-        meters = [self._read(v) for v in self.meter_dids]
+        meters = []
+        for did in self.meter_dids:
+            modbus_id = self._read(did)
+            if modbus_id and modbus_id != 255:
+                meters.append(modbus_id)
+            else:
+                break
 
-        return {f"Meter{idx + 1}": Meter(offset=idx, parent=self) for idx, v in enumerate(meters) if v}
+        return {f"Meter{idx + 1}": Meter(offset=idx, parent=self) for idx, _ in enumerate(meters)}
 
     def batteries(self):
-        batteries = [self._read(v) for v in self.battery_dids]
+        batteries_id = []
+        for did in self.battery_dids:
+            modbus_id = self._read(did)
+            if modbus_id and modbus_id != 255:
+                batteries_id.append(modbus_id)
+            else:
+                break
 
-        return {f"Battery{idx + 1}": Battery(offset=idx, parent=self) for idx, v in enumerate(batteries) if v != 255}
+        return {f"Battery{i + 1}": Battery(offset=i, parent=self) for i, _ in enumerate(batteries_id)}
 
 
 class Meter(SolarEdge):

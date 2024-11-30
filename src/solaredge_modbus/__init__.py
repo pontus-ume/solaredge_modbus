@@ -41,13 +41,39 @@ class inverterStatus(enum.Enum):
 
 
 class batteryStatus(enum.Enum):
-    B_STATUS_OFF = 1
-    B_STATUS_EMPTY = 2
-    B_STATUS_DISCHARGING = 3
-    B_STATUS_CHARGING = 4
-    B_STATUS_FULL = 5
-    B_STATUS_HOLDING = 6
-    B_STATUS_TESTING = 7
+    I_STATUS_OFF = 0
+    I_STATUS_STANDBY = 1
+    I_STATUS_INIT = 2
+    I_STATUS_CHARGE = 3
+    I_STATUS_DISCHARGE = 4
+    I_STATUS_FAULT = 5
+    I_STATUS_RESERVED = 6
+    I_STATUS_IDLE = 7
+    I_STATUS_POWER_SAVING = 10
+
+class batteryControlModes(enum.Enum):
+    I_MODE_DISABLED = 0
+    I_MODE_SELF_CONSUMPTION = 1
+    I_MODE_TIME_OF_USE = 2
+    I_MODE_BACKUP_ONLY = 3
+    I_MODE_REMOTE_CONTROL = 4
+
+class batteryChargePolicies(enum.Enum):
+    I_POLICY_DISABLED = 0
+    I_POLICY_ALWAYS_ALLOWED = 1
+    I_POLICY_FIXED_ENERGY_LIMIT = 2
+    I_POLICY_PERCENT_OF_PRODUCTION = 3
+
+class batteryRemoteControlModes(enum.Enum):
+    I_MODE_OFF = 0
+    I_MODE_CHARGE_EXCESS_PV = 1
+    I_MODE_CHARGE_PV_FIRST = 2
+    I_MODE_CHARGE_MAX = 3
+    I_MODE_DISCHARGE_MAX = 4
+    I_MODE_DISCHARGE_LOAD_CONSUMPTION = 5
+    I_MODE_RESERVED = 6
+    I_MODE_SELF_CONSUMPTION = 7
+
 
 
 class connectionType(enum.Enum):
@@ -123,7 +149,37 @@ BATTERY_STATUS_MAP = [
     "Charge",
     "Discharge",
     "Fault",
-    "Idle"
+    "RESERVED",
+    "Idle",
+    "RESERVED",
+    "RESERVED",
+    "Power Saving"
+]
+
+BATTERY_CONTROL_MODES_MAP = [
+    'Disabled', 
+    'Maximize Self Consumption',
+    'Time Of Use', 
+    'Backup Only', 
+    'Remote Control'
+]
+
+BATTERY_CHARGE_POLICIES_MAP = [
+    'Disabled',
+    'Always Allowed',
+    'Fixed Energy Limit',
+    'Percent Of Production'
+]
+
+BATTERY_REMOTE_CONTROL_MODES_MAP = [
+    'Off',
+    'Charge Excess PV',
+    'Charge PV First',
+    'Charge Max',
+    'Discharge Max',
+    'Discharge Load Consumption',
+    'RESERVED',
+    'Self Consumption'
 ]
 
 EXPORT_CONTROL_LIMIT_MAP = [
@@ -150,7 +206,6 @@ BATTERY_REGISTER_OFFSETS = [
     0x100,
     0x200
 ]
-
 
 class SolarEdge:
 

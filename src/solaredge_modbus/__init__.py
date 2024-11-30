@@ -553,7 +553,17 @@ class Inverter(SolarEdge):
 
             "export_control_mode": (0xf700, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Mode", "", 5),
             "export_control_limit_mode": (0xf701, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Limit Mode", EXPORT_CONTROL_LIMIT_MAP, 5),
-            "export_control_site_limit": (0xf702, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 5)
+            "export_control_site_limit": (0xf702, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 5),
+
+            "storage_control_mode":             (0xf704, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Control Mode", BATTERY_CONTROL_MODES_MAP,	5),
+            "storage_ac_charge_policy":         (0xf705, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage AC Charge Policy", BATTERY_CHARGE_POLICIES_MAP,	5),
+            "storage_ac_charge_limit":          (0xf706, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "kWh or %",	5),
+            "storage_backup_reserved_setting":  (0xf708, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%",	5),
+            "remote_control_mode_default":      (0xf70A, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Charge/Discharge Default Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
+            "remote_control_timeout":           (0xf70B, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Timeout", "Sec",	5),
+            "remote_control_mode":              (0xf70D, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Remote Control Command Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
+            "remote_control_charge_limit":      (0xf70E, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Charge Limit", "W",	5),
+            "remote_control_discharge_limit":   (0xf710, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W",	5),
         }
 
         self.meter_dids = [
@@ -737,4 +747,19 @@ class Battery(SolarEdge):
 
             "event_log": (0xe18a + self.offset, 2, registerType.HOLDING, registerDataType.UINT16, int, "Event Log", "", 2),
             "event_log_internal": (0xe192 + self.offset, 2, registerType.HOLDING, registerDataType.UINT16, int, "Internal Event Log", "", 2),
+
+            "export_control_mode":       (0xe000, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Mode", "", 3),
+            "export_control_limit_mode": (0xe001, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Limit Mode", EXPORT_CONTROL_LIMIT_MAP, 3),
+            "export_control_site_limit": (0xe002, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 3),
+
+            "storage_control_mode":             (0xe004, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Control Mode", BATTERY_CONTROL_MODES_MAP,	3),
+            "storage_ac_charge_policy":         (0xe005, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage AC Charge Policy", BATTERY_CHARGE_POLICIES_MAP,	3),
+            "storage_ac_charge_limit":          (0xe006, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "kWh or %",	3),
+            "storage_backup_reserved_setting":  (0xe008, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%",	3),
+            "remote_control_mode_default":      (0xe00a, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Charge/Discharge Default Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	3),
+            "remote_control_timeout":           (0xe00b, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Timeout", "Sec",	3),
+            "remote_control_mode":              (0xe00d, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Remote Control Command Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	3),
+            "remote_control_charge_limit":      (0xe00e, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Charge Limit", "W",	3),
+            "remote_control_discharge_limit":   (0xe010, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W",	3),
+            "external_production_max_power":    (0xe012, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "External Production Max Power", "W",	3),
         }

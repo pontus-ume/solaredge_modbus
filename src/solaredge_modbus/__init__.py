@@ -127,11 +127,17 @@ BATTERY_STATUS_MAP = [
     "Idle"
 ]
 
+class ExportControlMode(enum.Enum):
+    DISABLED = 0
+    DIRECT_EXPORT_LIMITATION = 1
+    INDIRECT_EXPORT_LIMITATION = 2
+    PRODUCTION_LIMITATION = 3
+
 EXPORT_CONTROL_MODE_MAP = {
-    0: "Disabled",
-    1: "Direct Export Limitation",
-    2: "Indirect Export Limitation",
-    3: "Production Limitation",
+    ExportControlMode.DISABLED:                     "Disabled",
+    ExportControlMode.DIRECT_EXPORT_LIMITATION:     "Direct Export Limitation",
+    ExportControlMode.INDIRECT_EXPORT_LIMITATION:   "Indirect Export Limitation",
+    ExportControlMode.PRODUCTION_LIMITATION:        "Production Limitation",
 }
 
 EXPORT_CONTROL_LIMIT_MAP = [
@@ -147,29 +153,51 @@ REACTIVE_POWER_CONFIG_MAP = [
     "RRCR Mode"
 ]
 
+class StorageControlMode(enum.Enum):
+    DISABLED                    = 0
+    MAXIMIZE_SELF_CONSUMPTION   = 1
+    TIME_OF_USE                 = 2
+    BACKUP_ONLY                 = 3
+    REMOTE_CONTROL              = 4 
+
 STOREDGE_CONTROL_MODE = {
-    0: "Disabled",
-    1: "Maximize Self Consumption",
-    2: "Time of Use",
-    3: "Backup Only",
-    4: "Remote Control",
+    StorageControlMode.DISABLED:                    "Disabled",
+    StorageControlMode.MAXIMIZE_SELF_CONSUMPTION:   "Maximize Self Consumption",
+    StorageControlMode.TIME_OF_USE:                 "Time of Use",
+    StorageControlMode.BACKUP_ONLY:                 "Backup Only",
+    StorageControlMode.REMOTE_CONTROL:              "Remote Control",
 }
+
+class StorageACChargePolicy(enum.Enum):
+    DISABLED                    = 0
+    ALWAYS_ALLOWED              = 1
+    FIXED_ENERGY_LIMIT          = 2
+    PERCENT_OF_PRODUCTION       = 3 
 
 STOREDGE_AC_CHARGE_POLICY = {
-    0: "Disabled",
-    1: "Always Allowed",
-    2: "Fixed Energy Limit",
-    3: "Percent of Production",
+    StorageACChargePolicy.DISABLED:                 "Disabled",
+    StorageACChargePolicy.ALWAYS_ALLOWED:           "Always Allowed",
+    StorageACChargePolicy.FIXED_ENERGY_LIMIT:       "Fixed Energy Limit",
+    StorageACChargePolicy.PERCENT_OF_PRODUCTION:    "Percent of Production",
 }
 
+class StorageChargeDischargeMode(enum.Enum):
+    OFF                                 = 0
+    CHARGE_FROM_EXCESS_PV_POWER_ONLY    = 1
+    CHARGE_FROM_PV_FIRST                = 2
+    CHARGE_FROM_PV_AND_AC               = 3
+    MAXIMIZE_EXPORT                     = 4
+    DISCHARGE_TO_MATCH_LOAD             = 5
+    MAXIMIZE_SELF_CONSUMPTION           = 7 
+
 STOREDGE_CHARGE_DISCHARGE_MODE = {
-    0: "Off",
-    1: "Charge from excess PV power only",
-    2: "Charge from PV first",
-    3: "Charge from PV and AC",
-    4: "Maximize export",
-    5: "Discharge to match load",
-    7: "Maximize self consumption",
+    StorageChargeDischargeMode.OFF:                                 "Off",
+    StorageChargeDischargeMode.CHARGE_FROM_EXCESS_PV_POWER_ONLY:    "Charge from excess PV power only",
+    StorageChargeDischargeMode.CHARGE_FROM_PV_FIRST:                "Charge from PV first",
+    StorageChargeDischargeMode.CHARGE_FROM_PV_AND_AC:               "Charge from PV and AC",
+    StorageChargeDischargeMode.MAXIMIZE_EXPORT:                     "Maximize export",
+    StorageChargeDischargeMode.DISCHARGE_TO_MATCH_LOAD:             "Discharge to match load",
+    StorageChargeDischargeMode.MAXIMIZE_SELF_CONSUMPTION:           "Maximize self consumption",
 }
 
 METER_REGISTER_OFFSETS = [
@@ -182,7 +210,6 @@ BATTERY_REGISTER_OFFSETS = [
     0x0,
     0x100
 ]
-
 
 class SolarEdge:
 
@@ -563,7 +590,7 @@ class Inverter(SolarEdge):
             "storage_ac_charge_limit": (0xe006, 2, registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "W", 6),
             "storage_backup_reserved_setting": (0xe008, 2, registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%", 6),
             "storage_default_mode": (0xe00a, 1, registerType.HOLDING, registerDataType.UINT16, int, "Storage Charge/Discharge Default Mode", "", 6),
-            "rc_cmd_timeout": (0xe00b, 2, registerType.HOLDING, registerDataType.UINT32, int, "Remote Control Command Timeout", "s", 6),
+            "rc_cmd_timeout": (0xe00B, 2, registerType.HOLDING, registerDataType.UINT32, int, "Remote Control Command Timeout", "s", 6),
             "rc_cmd_mode": (0xe00d, 1, registerType.HOLDING, registerDataType.UINT16, int, "Remote Control Command Mode", "", 6),
             "rc_charge_limit": (0xe00e, 2, registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Charge Limit", "W", 6),
             "rc_discharge_limit": (0xe010, 2, registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W", 6)

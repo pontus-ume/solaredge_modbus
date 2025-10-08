@@ -10,7 +10,6 @@ RETRIES = 3
 TIMEOUT = 1
 UNIT = 1
 
-
 class sunspecDID(enum.Enum):
     SINGLE_PHASE_INVERTER = 101
     SPLIT_PHASE_INVERTER = 102
@@ -213,7 +212,6 @@ class SolarEdge:
     stopbits = 1
     parity = "N"
     baud = 115200
-    wordorder = Endian.BIG
 
     def __init__(
         self, host=False, port=False,
@@ -293,36 +291,36 @@ class SolarEdge:
                 continue
 
             result = self.client.read_holding_registers(address, length, slave=self.unit)
-
             if not isinstance(result, ReadHoldingRegistersResponse):
                 continue
             if len(result.registers) != length:
                 continue
 
-            return BinaryPayloadDecoder.fromRegisters(result.registers, byteorder=Endian.BIG, wordorder=self.wordorder)
+            return BinaryPayloadDecoder.fromRegisters(result.registers, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
 
         return None
 
-    def _write_holding_register(self, address, value):
-        return self.client.write_registers(address=address, values=value, slave=self.unit)
+    def _write_holding_register(self, address, value, dtype):
+        encoded_value = self._encode_value(value, dtype)
+        return self.client.write_registers(address=address, values=encoded_value, slave=self.unit)
 
     def _encode_value(self, data, dtype):
-        builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=self.wordorder)
+        builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.LITTLE)
 
         try:
             if dtype == registerDataType.INT16:
                 builder.add_16bit_int(data)
-            elif dtype == registerDataType.INT32:
-                builder.add_32bit_int(data)
             elif dtype == registerDataType.UINT16:
                 builder.add_16bit_uint(data)
+            elif (dtype == registerDataType.FLOAT32 or
+                  dtype == registerDataType.SEFLOAT):
+                builder.add_32bit_float(data)
+            elif dtype == registerDataType.INT32:
+                builder.add_32bit_int(data)
             elif dtype == registerDataType.UINT32:
                 builder.add_32bit_uint(data)
             elif dtype == registerDataType.UINT64:
                 builder.add_64bit_uint(data)
-            elif (dtype == registerDataType.FLOAT32 or
-                  dtype == registerDataType.SEFLOAT):
-                builder.add_32bit_float(data)
             elif dtype == registerDataType.STRING:
                 builder.add_string(data)
             else:
@@ -367,9 +365,7 @@ class SolarEdge:
         address, length, rtype, dtype, vtype, label, fmt, batch = value
 
         try:
-            if rtype == registerType.INPUT:
-                return self._decode_value(self._read_input_registers(address, length), length, dtype, vtype)
-            elif rtype == registerType.HOLDING:
+            if rtype == registerType.HOLDING:
                 return self._decode_value(self._read_holding_registers(address, length), length, dtype, vtype)
             else:
                 raise NotImplementedError(rtype)
@@ -379,18 +375,17 @@ class SolarEdge:
             return False
 
     def _read_all(self, values, rtype):
-        addr_min = False
-        addr_max = False
+        if len(values) == 0:
+            return {}
+        
+        # Get first key from values dicitonary
+        first_key = next(iter(values))
+        addr_min = values[first_key][0]
+        addr_max = addr_min + values[first_key][1]
 
-        for k, v in values.items():
+        for _, v in values.items():
             v_addr = v[0]
             v_length = v[1]
-
-            if addr_min is False:
-                addr_min = v_addr
-            if addr_max is False:
-                addr_max = v_addr + v_length
-
             if v_addr < addr_min:
                 addr_min = v_addr
             if (v_addr + v_length) > addr_max:
@@ -401,9 +396,7 @@ class SolarEdge:
         length = addr_max - addr_min
 
         try:
-            if rtype == registerType.INPUT:
-                data = self._read_input_registers(offset, length)
-            elif rtype == registerType.HOLDING:
+            if rtype == registerType.HOLDING:
                 data = self._read_holding_registers(offset, length)
             else:
                 raise NotImplementedError(rtype)
@@ -412,26 +405,27 @@ class SolarEdge:
                 return results
 
             for k, v in values.items():
-                address, length, rtype, dtype, vtype, label, fmt, batch = v
+                v_addr, v_length, rtype, dtype, vtype, label, fmt, batch = v
 
-                if address > offset:
-                    skip_bytes = address - offset
+                if v_addr > offset:
+                    skip_bytes = v_addr - offset
                     offset += skip_bytes
                     data.skip_bytes(skip_bytes * 2)
 
-                results[k] = self._decode_value(data, length, dtype, vtype)
-                offset += length
+                results[k] = self._decode_value(data, v_length, dtype, vtype)
+                offset += v_length
         except NotImplementedError:
             raise
 
         return results
 
     def _write(self, value, data):
+        # Unpack value tuple to extract necessary information
         address, length, rtype, dtype, vtype, label, fmt, batch = value
-
         try:
             if rtype == registerType.HOLDING:
-                return self._write_holding_register(address, self._encode_value(data, dtype))
+                # Pass dtype to _write_holding_register
+                return self._write_holding_register(address, data, dtype)
             else:
                 raise NotImplementedError(rtype)
         except NotImplementedError:
@@ -458,11 +452,11 @@ class SolarEdge:
 
         return self._write(self.registers[key], data)
 
-    def read_all(self, rtype=registerType.HOLDING):
+    def read_all(self, rtype=registerType.HOLDING, batches=None):
         registers = {k: v for k, v in self.registers.items() if (v[2] == rtype)}
         results = {}
 
-        for batch in range(1, len(registers)):
+        for batch in batches if batches else range(1, len(registers)):
             register_batch = {k: v for k, v in registers.items() if (v[7] == batch)}
 
             if not register_batch:
@@ -477,7 +471,6 @@ class Inverter(SolarEdge):
 
     def __init__(self, *args, **kwargs):
         self.model = "Inverter"
-        self.wordorder = Endian.BIG
 
         super().__init__(*args, **kwargs)
 
@@ -551,20 +544,26 @@ class Inverter(SolarEdge):
 
             "advanced_power_control_enable": (0xf142, 2, registerType.HOLDING, registerDataType.UINT16, int, "Advanced Power Control Enable", "", 4),
 
-            "export_control_mode": (0xf700, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Mode", "", 5),
-            "export_control_limit_mode": (0xf701, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Limit Mode", EXPORT_CONTROL_LIMIT_MAP, 5),
-            "export_control_site_limit": (0xf702, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 5),
+            # Export Limit Control Block
+            "export_control_mode":              (0xe000, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Mode", "", 5),
+            "export_control_limit_mode":        (0xe001, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Limit Mode", EXPORT_CONTROL_LIMIT_MAP, 5),
+            "export_control_site_limit":        (0xe002, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 5),
+            "external_production_max_power":    (0xe012, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "External Production Max Power", "W",	5),
 
-            "storage_control_mode":             (0xf704, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Control Mode", BATTERY_CONTROL_MODES_MAP,	5),
-            "storage_ac_charge_policy":         (0xf705, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage AC Charge Policy", BATTERY_CHARGE_POLICIES_MAP,	5),
-            "storage_ac_charge_limit":          (0xf706, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "kWh or %",	5),
-            "storage_backup_reserved_setting":  (0xf708, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%",	5),
-            "remote_control_mode_default":      (0xf70A, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Charge/Discharge Default Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
-            "remote_control_timeout":           (0xf70B, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Timeout", "Sec",	5),
-            "remote_control_mode":              (0xf70D, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Remote Control Command Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
-            "remote_control_charge_limit":      (0xf70E, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Charge Limit", "W",	5),
-            "remote_control_discharge_limit":   (0xf710, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W",	5),
+            # StorEdge Control and Status Block
+            "storage_control_mode":             (0xe004, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Control Mode", BATTERY_CONTROL_MODES_MAP,	5),
+            "storage_ac_charge_policy":         (0xe005, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage AC Charge Policy", BATTERY_CHARGE_POLICIES_MAP,	5),
+            "storage_ac_charge_limit":          (0xe006, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "kWh or %",	5),
+            "storage_backup_reserved_setting":  (0xe008, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%",	5),
+            "remote_control_mode_default":      (0xe00a, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Charge/Discharge Default Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
+            "remote_control_timeout":           (0xe00b, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Timeout", "Sec",	5),
+            "remote_control_mode":              (0xe00d, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Remote Control Command Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	5),
+            "remote_control_charge_limit":      (0xe00e, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Charge Limit", "W",	5),
+            "remote_control_discharge_limit":   (0xe010, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W",	5),
         }
+        
+        # Sort by address
+        self.registers = dict(sorted(self.registers.items(), key=lambda item: item[1][0]))
 
         self.meter_dids = [
             (0x9cfc, 1, registerType.HOLDING, registerDataType.UINT16, int, "", "", 1),
@@ -605,7 +604,6 @@ class Meter(SolarEdge):
 
     def __init__(self, offset=False, *args, **kwargs):
         self.model = f"Meter{offset + 1}"
-        self.wordorder = Endian.BIG
 
         super().__init__(*args, **kwargs)
 
@@ -707,7 +705,6 @@ class Battery(SolarEdge):
 
     def __init__(self, offset=False, *args, **kwargs):
         self.model = f"Battery{offset + 1}"
-        self.wordorder = Endian.LITTLE
 
         super().__init__(*args, **kwargs)
 
@@ -747,19 +744,12 @@ class Battery(SolarEdge):
 
             "event_log": (0xe18a + self.offset, 2, registerType.HOLDING, registerDataType.UINT16, int, "Event Log", "", 2),
             "event_log_internal": (0xe192 + self.offset, 2, registerType.HOLDING, registerDataType.UINT16, int, "Internal Event Log", "", 2),
-
-            "export_control_mode":       (0xe000, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Mode", "", 3),
-            "export_control_limit_mode": (0xe001, 1, registerType.HOLDING, registerDataType.UINT16, int, "Export Control Limit Mode", EXPORT_CONTROL_LIMIT_MAP, 3),
-            "export_control_site_limit": (0xe002, 2, registerType.HOLDING, registerDataType.FLOAT32, int, "Export Control Site Limit", "W", 3),
-
-            "storage_control_mode":             (0xe004, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Control Mode", BATTERY_CONTROL_MODES_MAP,	3),
-            "storage_ac_charge_policy":         (0xe005, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage AC Charge Policy", BATTERY_CHARGE_POLICIES_MAP,	3),
-            "storage_ac_charge_limit":          (0xe006, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage AC Charge Limit", "kWh or %",	3),
-            "storage_backup_reserved_setting":  (0xe008, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Storage Backup Reserved Setting", "%",	3),
-            "remote_control_mode_default":      (0xe00a, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Storage Charge/Discharge Default Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	3),
-            "remote_control_timeout":           (0xe00b, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Timeout", "Sec",	3),
-            "remote_control_mode":              (0xe00d, 1,	registerType.HOLDING, registerDataType.UINT16,  int, "Remote Control Command Mode", BATTERY_REMOTE_CONTROL_MODES_MAP,	3),
-            "remote_control_charge_limit":      (0xe00e, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Charge Limit", "W",	3),
-            "remote_control_discharge_limit":   (0xe010, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "Remote Control Command Discharge Limit", "W",	3),
-            "external_production_max_power":    (0xe012, 2,	registerType.HOLDING, registerDataType.FLOAT32, float, "External Production Max Power", "W",	3),
         }
+        
+        # Sort by address
+        self.registers = dict(sorted(self.registers.items(), key=lambda item: item[1][0]))
+
+
+    def write(self, key, data):
+        # Batteries is read only!
+        raise Exception("Batteries is read only!")
